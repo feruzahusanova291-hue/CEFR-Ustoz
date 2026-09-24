@@ -95,6 +95,42 @@ def build_application(token: str, commands: list[BotCommand]) -> Application:
     return app
 
 
+def _start_dummy_web_server() -> None:
+    """Render kabi bepul hostinglar uchun kichik HTTP server (agar PORT berilgan bo'lsa)."""
+    import os
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    port_str = os.getenv("PORT")
+    if not port_str:
+        return
+
+    try:
+        port = int(port_str)
+    except ValueError:
+        return
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"CEFR Bot is running!")
+
+        def log_message(self, format, *args):
+            pass
+
+    try:
+        server = HTTPServer(("0.0.0.0", port), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        log.info("Render Web Service uchun HTTP server port %d da ishga tushdi", port)
+    except Exception as e:
+        log.warning("HTTP serverni ishga tushirib bo'lmadi: %s", e)
+
+
 def run(app: Application, name: str) -> None:
+    _start_dummy_web_server()
     log.info("%s ishga tushmoqda...", name)
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+
